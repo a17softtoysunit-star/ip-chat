@@ -61,21 +61,25 @@ jobs:
 
       - name: Setup Cordova Project & Configure Icon
         run: |
-          # 1. Project banayein jiska naam IP-Chat ho
+          # 1. Project create karein
           cordova create ipchat-app com.khalid.ipchat "IP-Chat"
           cd ipchat-app
 
-          # 2. index.html copy karein
+          # 2. Files copy karein
           rm -rf www/*
           cp ../index.html www/index.html
-
-          # 3. Generated icon ko www me copy karein
           cp ../icon.png www/icon.png
 
-          # 4. Config.xml me icon add karein (No splash error)
-          sed -i '/<name>IP-Chat<\\/name>/a \\    <icon src="www/icon.png" />' config.xml
+          # 3. Clean Python script se config.xml update karein (No sed error)
+          python -c '
+          with open("config.xml", "r") as f:
+              content = f.read()
+          content = content.replace("</widget>", "    <icon src=\"www/icon.png\" />\n</widget>")
+          with open("config.xml", "w") as f:
+              f.write(content)
+          '
 
-          # 5. Android platform add karein
+          # 4. Android platform add karein
           cordova platform add android
 
       - name: Build APK
@@ -88,4 +92,3 @@ jobs:
         with:
           name: IP-Chat-APK
           path: ipchat-app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
-          
