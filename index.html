@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>IP Chat</title>
+  <!-- MQTT Library for instant free sync -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: radial-gradient(circle at top right, #1e1b4b, #0b0f19 75%);
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 420px;
+      height: 94vh;
+      max-height: 850px;
+      background: #131b2e;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 22px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .screen {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Login Screen */
+    .login-box {
+      padding: 30px 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+    }
+
+    .logo {
+      width: 76px;
+      height: 76px;
+      background: linear-gradient(135deg, #4f46e5, #06b6d4);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 16px;
+      color: white;
+      box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4);
+    }
+
+    .field {
+      text-align: left;
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      font-size: 13px;
+      color: #94a3b8;
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .field input {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 13px 15px;
+      color: white;
+      outline: none;
+      font-size: 15px;
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus {
+      border-color: #4f46e5;
+    }
+
+    .btn-connect {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 6px;
+      box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+    }
+
+    .btn-connect:active {
+      transform: scale(0.98);
+    }
+
+    .credits {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #64748b;
+      letter-spacing: 0.5px;
+    }
+
+    .credits span {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    /* Header */
+    .header {
+      padding: 14px 16px;
+      background: #0f172a;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .room-badge b {
+      font-size: 15px;
+    }
+
+    .room-badge p {
+      font-size: 11px;
+      color: #10b981;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .icon-btn.danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    /* Messages */
+    .messages {
+      flex: 1;
+      padding: 14px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .msg {
+      max-width: 80%;
+      padding: 9px 13px;
+      border-radius: 14px;
+      font-size: 14px;
+      word-break: break-word;
+      animation: fadeIn 0.15s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.me {
+      align-self: flex-end;
+      background: #4f46e5;
+      color: white;
+      border-bottom-right-radius: 2px;
+    }
+
+    .msg.other {
+      align-self: flex-start;
+      background: #1e293b;
+      color: #f8fafc;
+      border-bottom-left-radius: 2px;
+    }
+
+    .msg-user {
+      font-size: 11px;
+      color: #38bdf8;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .msg-time {
+      font-size: 10px;
+      opacity: 0.65;
+      text-align: right;
+      margin-top: 3px;
+    }
+
+    .alert {
+      align-self: center;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 11.5px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Footer */
+    .footer-wrapper {
+      background: #0f172a;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .footer {
+      padding: 10px 14px 6px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .footer input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 10px 16px;
+      color: white;
+      outline: none;
+      font-size: 14px;
+    }
+
+    .footer button {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #4f46e5;
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chat-footer-credit {
+      text-align: center;
+      padding-bottom: 6px;
+      font-size: 10.5px;
+      color: #64748b;
+      letter-spacing: 0.4px;
+    }
+
+    .chat-footer-credit span {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <!-- 1. LOGIN SCREEN -->
+    <div id="loginScreen" class="screen">
+      <div class="login-box">
+        <div class="logo"><i class="fa-solid fa-comments"></i></div>
+        <h2 style="margin-bottom: 4px;">IP Chat</h2>
+        <p style="color:#94a3b8; font-size:13px; margin-bottom: 22px;">Instant Private Messaging</p>
+
+        <div class="field">
+          <label>Username</label>
+          <input type="text" id="username" placeholder="Apna naam daalein" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label>IP Address / Random Number</label>
+          <input type="text" id="roomCode" placeholder="Ex: 8877 ya 192.168.1.1" autocomplete="off">
+        </div>
+
+        <button class="btn-connect" onclick="connectChat()">
+          <span>CONNECT & START</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+
+        <div class="credits">
+          Developed by <span>Khalid Chaudhary</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. CHAT SCREEN -->
+    <div id="chatScreen" class="screen hidden">
+      <div class="header">
+        <div class="room-badge">
+          <b id="roomTitle">Room: </b>
+          <p><i class="fa-solid fa-circle" style="font-size:8px;"></i> Online</p>
+        </div>
+
+        <div class="header-actions">
+          <!-- Clear Chat for Everyone -->
+          <button class="icon-btn danger" onclick="clearChatForEveryone()" title="Clear Chat for Everyone">
+            <i class="fa-solid fa-trash"></i> Clear
+          </button>
+          <!-- Leave Room -->
+          <button class="icon-btn" onclick="leaveRoom()" title="Leave">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Messages Body -->
+      <div class="messages" id="msgBox">
+        <div class="alert"><i class="fa-solid fa-shield-halved"></i> Connected! Messages yahan show honge.</div>
+      </div>
+
+      <!-- Footer / Input -->
+      <div class="footer-wrapper">
+        <div class="footer">
+          <input type="text" id="chatInput" placeholder="Message likhein..." onkeypress="if(event.key==='Enter') sendText()" autocomplete="off">
+          <button onclick="sendText()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+        <div class="chat-footer-credit">
+          Developed by <span>Khalid Chaudhary</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let client, user, topic;
+
+    function connectChat() {
+      user = document.getElementById("username").value.trim();
+      let room = document.getElementById("roomCode").value.trim();
+
+      if (!user || !room) {
+        alert("Kripya Username aur IP/Room Code dono daalein!");
+        return;
+      }
+
+      let clientId = "c_" + Math.random().toString(16).slice(2, 9);
+      topic = "ipchat_app_v4/" + room.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+      client = new Paho.MQTT.Client("broker.hivemq.com", 8884, clientId);
+
+      client.onMessageArrived = (msg) => {
+        try {
+          let data = JSON.parse(msg.payloadString);
+          if (data.type === 'msg') {
+            renderMsg(data);
+          } else if (data.type === 'clear') {
+            document.getElementById("msgBox").innerHTML = 
+              `<div class="alert"><i class="fa-solid fa-broom"></i> <b>${data.by}</b> ne sabhi ke liye chat clear kar di.</div>`;
+          } else if (data.type === 'join' && data.user !== user) {
+            showAlert(`<b>${escapeHtml(data.user)}</b> chat me jud gaye.`);
+          }
+        } catch(e) {
+          console.error(e);
+        }
+      };
+
+      client.onConnectionLost = (resp) => {
+        if (resp.errorCode !== 0) {
+          console.log("Disconnected: " + resp.errorMessage);
+        }
+      };
+
+      client.connect({
+        useSSL: true,
+        timeout: 5,
+        onSuccess: () => {
+          client.subscribe(topic);
+          document.getElementById("loginScreen").classList.add("hidden");
+          document.getElementById("chatScreen").classList.remove("hidden");
+          document.getElementById("roomTitle").innerText = "IP: " + room;
+
+          sendPayload({ type: 'join', user: user });
+        },
+        onFailure: (err) => alert("Connection Error! Internet check karein: " + err.errorMessage)
+      });
+    }
+
+    function sendPayload(payload) {
+      if (!client || !client.isConnected()) return;
+      let msg = new Paho.MQTT.Message(JSON.stringify(payload));
+      msg.destinationName = topic;
+      client.send(msg);
+    }
+
+    function sendText() {
+      let inp = document.getElementById("chatInput");
+      let text = inp.value.trim();
+      if (!text) return;
+
+      sendPayload({
+        type: 'msg',
+        user: user,
+        text: text,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      inp.value = "";
+      inp.focus();
+    }
+
+    function renderMsg(data) {
+      let isMe = data.user === user;
+      let div = document.createElement("div");
+      div.className = `msg ${isMe ? 'me' : 'other'}`;
+
+      let html = "";
+      if (!isMe) {
+        html += `<div class="msg-user">${escapeHtml(data.user)}</div>`;
+      }
+      html += `<div>${escapeHtml(data.text)}</div>
+               <div class="msg-time">${data.time}</div>`;
+      
+      div.innerHTML = html;
+      let box = document.getElementById("msgBox");
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function clearChatForEveryone() {
+      if (!confirm("Kya aap sabhi users ke liye chat clear karna chahte hain?")) return;
+      sendPayload({ type: 'clear', by: user });
+    }
+
+    function showAlert(textHtml) {
+      let box = document.getElementById("msgBox");
+      let div = document.createElement("div");
+      div.className = "alert";
+      div.innerHTML = textHtml;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function leaveRoom() {
+      if (client && client.isConnected()) {
+        client.disconnect();
+      }
+      location.reload();
+    }
+
+    function escapeHtml(str) {
+      let p = document.createElement('p');
+      p.innerText = str;
+      return p.innerHTML;
+    }
+  </script>
+</body>
+</html>
