@@ -31,7 +31,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          npm install -g cordova cordova-res
+          npm install -g cordova
           pip install pillow
 
       - name: Auto-Generate App Icon
@@ -50,25 +50,33 @@ jobs:
           draw.ellipse([80, 60, 432, 412], fill=(255, 255, 255, 255))
           draw.polygon([(180, 360), (120, 440), (280, 380)], fill=(255, 255, 255, 255))
 
-          # Blue signal icon inside bubble
+          # Blue signal icon
           draw.ellipse([236, 260, 276, 300], fill=(79, 70, 229, 255))
           draw.arc([190, 210, 322, 342], start=200, end=340, fill=(79, 70, 229, 255), width=14)
           draw.arc([150, 170, 362, 382], start=200, end=340, fill=(79, 70, 229, 255), width=14)
 
           img.save("icon.png")
-          print("Icon successfully auto-generated!")
+          print("Icon successfully created!")
           '
 
-      - name: Setup Cordova Project & Set Icon
+      - name: Setup Cordova Project & Configure Icon
         run: |
+          # 1. Project banayein jiska naam IP-Chat ho
           cordova create ipchat-app com.khalid.ipchat "IP-Chat"
           cd ipchat-app
+
+          # 2. index.html copy karein
           rm -rf www/*
           cp ../index.html www/index.html
-          mkdir -p resources
-          cp ../icon.png resources/icon.png
+
+          # 3. Generated icon ko www me copy karein
+          cp ../icon.png www/icon.png
+
+          # 4. Config.xml me icon add karein (No splash error)
+          sed -i '/<name>IP-Chat<\\/name>/a \\    <icon src="www/icon.png" />' config.xml
+
+          # 5. Android platform add karein
           cordova platform add android
-          npx cordova-res android --skip-config --copy
 
       - name: Build APK
         run: |
@@ -80,3 +88,4 @@ jobs:
         with:
           name: IP-Chat-APK
           path: ipchat-app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          
