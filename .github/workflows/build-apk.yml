@@ -1,0 +1,82 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: |
+          npm install -g cordova cordova-res
+          pip install pillow
+
+      - name: Auto-Generate App Icon
+        run: |
+          python -c '
+          from PIL import Image, ImageDraw
+
+          size = 512
+          img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+          draw = ImageDraw.Draw(img)
+
+          # Background Rounded Rectangle
+          draw.rounded_rectangle([0, 0, size, size], radius=110, fill=(79, 70, 229, 255))
+
+          # White Chat Bubble
+          draw.ellipse([80, 60, 432, 412], fill=(255, 255, 255, 255))
+          draw.polygon([(180, 360), (120, 440), (280, 380)], fill=(255, 255, 255, 255))
+
+          # Blue signal icon inside bubble
+          draw.ellipse([236, 260, 276, 300], fill=(79, 70, 229, 255))
+          draw.arc([190, 210, 322, 342], start=200, end=340, fill=(79, 70, 229, 255), width=14)
+          draw.arc([150, 170, 362, 382], start=200, end=340, fill=(79, 70, 229, 255), width=14)
+
+          img.save("icon.png")
+          print("Icon successfully auto-generated!")
+          '
+
+      - name: Setup Cordova Project & Set Icon
+        run: |
+          cordova create ipchat-app com.khalid.ipchat "IP-Chat"
+          cd ipchat-app
+          rm -rf www/*
+          cp ../index.html www/index.html
+          mkdir -p resources
+          cp ../icon.png resources/icon.png
+          cordova platform add android
+          npx cordova-res android --skip-config --copy
+
+      - name: Build APK
+        run: |
+          cd ipchat-app
+          cordova build android --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: IP-Chat-APK
+          path: ipchat-app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
